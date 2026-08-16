@@ -109,7 +109,12 @@ class Table:
                 player.putInPot(toCall + betAmount)
                 currentBet = player.currentBet
                 # Re-add other live players so they can respond to the new bet/raise
-                queue.extend(p for p in self.players if not p.folded and not p.allIn and p != player)
+                queue = deque(
+                    p for p in orderedPlayers
+                    if (p != player and not p.folded and not p.allIn and p.currentBet < currentBet )
+                )
+            else:
+                raise ValueError(f"Unknown action: {action}")
 
             queue = deque(p for p in queue if not p.folded and not p.allIn)
 

@@ -1,6 +1,6 @@
 from itertools import combinations
 import random
-from evals import Rank, scoreFive
+from evals import Rank, Suit, Card, scoreFive, bestScore, newDeck
 
 ranksAscending = sorted(Rank, key=lambda x: x.value)
 
@@ -83,9 +83,7 @@ def preflopAction(pos:str, holeCards: list, facingBet: bool) -> str:
 #Postflop decision making based on the hero's hole cards, community cards, and whether they are facing a bet
 def postflopAction(holeCards: list, communityCards: list, facingBet: bool) -> str:
     allCards = holeCards + communityCards
-    bestHand = bestFiveCards(allCards) #Get the best 5 card hand from the hero's hole cards and the community cards
-    score = scoreFive(bestHand)[0] #Get the hand category score (0-8)
-
+    score = bestScore(allCards)[0] #Get the best 5 card hand from the hero's hole cards and the community cards
     if facingBet:
         if score >= 3: #Three of a kind or better
             return "raise"
@@ -97,11 +95,11 @@ def postflopAction(holeCards: list, communityCards: list, facingBet: bool) -> st
             return "fold"
     else:
         if score >= 3: #Three of a kind or better
-            return "raise"
+            return "bet"
         elif score == 2: #Two pair
-            return "raise"
+            return "bet"
         elif score == 1: #One pair
-            return "call"
+            return "check"
         else: #High card
             return "check"
 
@@ -115,3 +113,119 @@ def bestFiveCards(cards: list) -> list:
             bestScoreValue = score
             best = list(combo)
     return best
+
+#Returns the (rank1, rank2, suited) hand types making up the top pct of allScores
+#eg rangeFromTopPercent(0.2) = the top 20% of starting hands
+def rangeFromTopPercent(pct: float) -> list:
+    n = max(1, round(pct * len(allScores)))
+    return [(r1, r2, suited) for (r1, r2, suited, score) in allScores[:n]]
+
+def expandHandTypes(handTypes: list, deadCards: list) -> list:
+    dead = set(deadCards) #
+    combos = []
+    for r1, r2, suited in handTypes:
+        if r1 == r2: #Pocket pair: any 2 of the 4 suits (6 combos)
+            suits = list(Suit)
+            for i in range(len(suits)):
+                for j in range(i + 1, len(suits)):
+                    c1, c2 = Card(r1, suits[i]), Card(r2, suits[j])
+                    if c1 not in dead and c2 not in dead:
+                        combos.append((c1, c2))
+        elif suited: #Same suit (4 combos)
+            for s in Suit:
+                c1, c2 = Card(r1, s), Card(r2, s)
+                if c1 not in dead and c2 not in dead:
+                    combos.append((c1, c2))
+        else: #Offsuit: different ranks and different suits (12 combos)
+            for s1 in Suit:
+                for s2 in Suit:
+                    if s1 != s2:
+                        c1, c2 = Card(r1, s1), Card(r2, s2)
+                        if c1 not in dead and c2 not in dead:
+                            combos.append((c1, c2))
+    return combos
+
+#Monte Carlo win/tie/lose probability for hero against a whole range of possible villain hands, given the known board 
+def handVsRangeEquity(heroCards: list, villainHandTypes: list, board: list, numSimulations: int = 3000) -> dict:
+    deadCards = heroCards + board
+    combos = expandHandTypes(villainHandTypes, deadCards)
+    if not combos:
+        raise ValueError("No combos left in villain's range given the known cards.")
+
+    dead = set(deadCards)
+    wins, ties, losses = 0, 0, 0
+    for _ in range(numSimulations):
+        villainCards = list(random.choice(combos))
+        deck = [c for c in newDeck() if c not in dead and c not in villainCards]
+        random.shuffle(deck)
+
+        currentBoard = board.copy()
+        while len(currentBoard) < 5:
+            currentBoard.append(deck.pop())
+
+        heroScore = bestScore(heroCards + currentBoard)
+        villainScore = bestScore(villainCards + currentBoard)
+        if heroScore > villainScore:
+            wins += 1
+        elif villainScore > heroScore:
+            losses += 1
+        else:
+            ties += 1
+
+    total = wins + ties + losses
+    return {"win": wins / total, "tie": ties / total, "lose": losses / total}
+
+#pot = chips already in the middle before hero acts (not including toCall)
+#toCall = extra chips needed just to match the current bet
+#equity = P(win) + P(tie)/2, the standard way to collapse win/tie/lose into one number
+
+#Folding never does anything further
+def evFold() -> float:
+    return 0.0
+
+#EV(call) = equity x finalPot - toCall, where finalPot = pot + toCall
+#Pot-odds break-even check written as an EV: calling is +EV whenever equity > toCall / (pot + toCall)
+def evCall(equity: float, pot: float, toCall: float) -> float:
+    finalPot = pot + toCall
+    return equity * finalPot - toCall
+
+#EV(raise) = foldEquity x (what you win if villain folds) + (1-foldEquity) x (showdown EV)
+#foldEquity (chance villain folds to the raise) is a genuine unknown you have to estimate - the formula is only as good as this input
+def evRaise(equity: float, pot: float, toCall: float, raiseSize: float, foldEquity: float) -> float:
+    if pot < 0 or toCall < 0 or raiseSize < 0:
+        raise ValueError("Pot and action sizes cannot be negative.")
+    if not 0 <= equity <= 1:
+        raise ValueError("Equity must be between 0 and 1.")
+    if not 0 <= foldEquity <= 1:
+        raise ValueError("Fold equity must be between 0 and 1.")
+
+    # Hero calls the existing bet and raises 
+    raiseCost = toCall + raiseSize
+    # If called, villain contributes  more.
+    finalPotIfCalled = pot + toCall + 2 * raiseSize
+    # If villain folds, hero's incremental profit is the pot that existed before hero acted. Hero's own contribution is not profit.
+    foldBranchEV = pot
+
+    calledBranchEV = (
+        equity * finalPotIfCalled
+        - raiseCost
+    )
+    return (
+        foldEquity * foldBranchEV
+        + (1 - foldEquity) * calledBranchEV
+    )
+
+#Runs the range equity calc and returns the EV of every action available (fold is only meaningful when facing a bet), plus which one has the highest EV
+def decisionEV(heroCards: list, villainHandTypes: list, board: list, pot: float, toCall: float,
+               raiseSize: float, foldEquity: float = 0.4, numSimulations: int = 3000) -> dict:
+    result = handVsRangeEquity(heroCards, villainHandTypes, board, numSimulations)
+    equity = result["win"] + result["tie"] / 2
+
+    evs = {"equity": equity, **result}
+    evs["fold"] = evFold() if toCall > 0 else None
+    evs["call"] = evCall(equity, pot, toCall) if toCall > 0 else None
+    evs["raise"] = evRaise(equity, pot, toCall, raiseSize, foldEquity)
+
+    candidates = {k: v for k, v in evs.items() if k in ("fold", "call", "raise") and v is not None}
+    evs["recommended"] = max(candidates, key=candidates.get)
+    return evs

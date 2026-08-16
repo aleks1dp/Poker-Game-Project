@@ -119,16 +119,20 @@ def getHumanAction(hero, board: list, toCall: int, pot: int, betAmount: int, isP
     print(f"Stack: {hero.stack} chips")
 
     if toCall > 0:
+        totalContribution = min(toCall + betAmount, hero.stack)
         print(f"\nYou need {toCall} chips to call.")
         print("1) Fold")
-        print(f"2) Call {toCall}")
-        print(f"3) Raise to {toCall + betAmount}")
+        print(f"2) Call {min(toCall, hero.stack)}")
+        print(
+            f"3) Call {toCall} and raise by {betAmount} "
+            f"({totalContribution} chips contributed now)"
+        )
+
         validActions = {
             "1": "fold",
             "2": "call",
-            "3": "bet"
-        }
-
+            "3": "raise",
+    }
     else:
         print("\nNo bet to call.")
         print("1) Check")

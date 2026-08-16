@@ -2,7 +2,27 @@ from gameplay import Table
 from tableSetUp import startingStack
 from evals import parseCard
 from humanUI import showHandRankings, printCheatSheet, calcOdds
-from equity import rangeFromTopPercent, decisionEV
+from decisions import rangeFromTopPercent, decisionEV
+
+def readFloat(prompt: str, default=None, minimum=None, maximum=None) -> float:
+    while True:
+        raw = input(prompt).strip()
+
+        if raw == "" and default is not None:
+            return float(default)
+        try:
+            value = float(raw)
+        except ValueError:
+            print("Please enter a number.")
+            continue
+        if minimum is not None and value < minimum:
+            print(f"Value must be at least {minimum}.")
+            continue
+        if maximum is not None and value > maximum:
+            print(f"Value must be at most {maximum}.")
+            continue
+
+        return value
 
 def printHandResult(result: dict):
     if result["showdown"]:
@@ -81,24 +101,31 @@ def evAnalysis():
         hero = [parseCard(c) for c in heroStr.split()]
         board = [parseCard(c) for c in boardStr.split()] if boardStr else []
 
-        rangePct = float(input("Opponent's range as top % of hands (e.g. 20 for top 20%): ").strip() or 20) / 100
-        villainRange = rangeFromTopPercent(rangePct)
+        rangePct = readFloat("Opponent range as top % of hands (default 20): ", default=20, minimum=0.1, maximum=100)
 
-        pot = float(input("Current pot size: ").strip())
-        toCall = float(input("Amount you need to call (0 if no bet facing you): ").strip() or 0)
-        raiseSize = float(input("Size of the raise/bet you're considering (on top of the call): ").strip())
-        foldEquity = float(input("Estimated chance opponent folds to your raise, 0-1 (default 0.4): ").strip() or 0.4)
+        pot = readFloat("Current pot size (default 100): ", default=100, minimum=0)
+        toCall = readFloat("Amount needed to call (default 0): ", default=0, minimum=0)
+        raiseSize = readFloat("Additional raise/bet size (default 50): ", default=50, minimum=0)
+        foldEquity = readFloat("Estimated opponent fold probability (default 0.4): ", default=0.4, minimum=0, maximum=1)
+        result = decisionEV(hero, board, pot, toCall, raiseSize, foldEquity, numSimulations=4000)
 
-        result = decisionEV(hero, villainRange, board, pot, toCall, raiseSize, foldEquity, numSimulations=4000)
-
-        print(f"\nEquity vs top {rangePct*100:.0f}% range: {result['equity']*100:.1f}% "
-              f"(win {result['win']*100:.1f}% / tie {result['tie']*100:.1f}% / lose {result['lose']*100:.1f}%)")
-        if result["fold"] is not None:
-            print(f"EV(fold)  = {result['fold']:.1f}")
-        if result["call"] is not None:
-            print(f"EV(call)  = {result['call']:.1f}")
-        print(f"EV(raise) = {result['raise']:.1f}")
-        print(f"-> Highest-EV action: {result['recommended']}")
+        print(
+            f"\nEquity vs strongest {rangePct:.1f}% of Chen-ranked "
+            f"starting-hand types: {result['equity']:.1%}"
+        )
+        print(
+            f"Win {result['win']:.1%} / "
+            f"Tie {result['tie']:.1%} / "
+            f"Lose {result['lose']:.1%}"
+        )
+        if toCall > 0:
+            print(f"EV(fold)  = {result['fold']:.2f}")
+            print(f"EV(call)  = {result['call']:.2f}")
+            print(f"EV(raise) = {result['raise']:.2f}")
+        else:
+            print("EV(check) = 0.00 baseline; future-street play is not modeled")
+            print(f"EV(bet)   = {result['bet']:.2f}")
+        print(f"Highest modeled EV: {result['recommended']}")
     except Exception as e:
         print(f"Error running EV analysis: {e}")
 
