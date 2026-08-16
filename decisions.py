@@ -71,7 +71,7 @@ def scoreCutoff(positions:str) -> float:
 cutOff = {pos: scoreCutoff(pos) for pos in preFlopRaise} #Dictionary of the score cutoffs for each position 
 
 #Preflop decision making based on the hero's position, hole cards, and whether they are facing a bet
-def preFlopDecision(pos:str, holeCards: list, facingBet: bool) -> str:
+def preflopAction(pos:str, holeCards: list, facingBet: bool) -> str:
     rank1, rank2 = holeCards[0].rank.value, holeCards[1].rank.value
     suited = holeCards[0].suit == holeCards[1].suit
     score = handScore(rank1, rank2, suited)
@@ -81,7 +81,7 @@ def preFlopDecision(pos:str, holeCards: list, facingBet: bool) -> str:
     return "call" if facingBet else "raise" #If facing a bet, call, otherwise raise
 
 #Postflop decision making based on the hero's hole cards, community cards, and whether they are facing a bet
-def postFlopDecision(holeCards: list, communityCards: list, facingBet: bool) -> str:
+def postflopAction(holeCards: list, communityCards: list, facingBet: bool) -> str:
     allCards = holeCards + communityCards
     bestHand = bestFiveCards(allCards) #Get the best 5 card hand from the hero's hole cards and the community cards
     score = scoreFive(bestHand)[0] #Get the hand category score (0-8)
@@ -115,4 +115,3 @@ def bestFiveCards(cards: list) -> list:
             bestScoreValue = score
             best = list(combo)
     return best
-        

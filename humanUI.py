@@ -1,4 +1,4 @@
-from evals import Rank, scoreFive, handCategories, parseCard, newDeck
+from evals import Rank, scoreFive, bestScore, handCategories, parseCard, newDeck
 from decisions import handScore, cutOff, startingHadsLabeled
 from itertools import combinations
 import random
@@ -52,7 +52,7 @@ def describeCurrentHand(holeCards: list, board: list) -> str:
     category, _ = scoreFive(list(best))
     return handCategories[category]
 
-def displayCheatsheet():
+def printCheatSheet():
     hands = startingHadsLabeled()
     earlyCutoff = cutOff["LJ"]
     lateCutoff = cutOff["BTN"]
@@ -65,10 +65,11 @@ def displayCheatsheet():
 
 def calcOdds(hand1: list, hand2: list, board: list, numSimulations: int = 2000) -> dict:
     wins1, wins2, ties = 0, 0, 0
+    knownCards = hand1 + hand2 + board
     for _ in range(numSimulations):
         deck = newDeck()
         # Remove the known cards from the deck
-        for card in hand1 + hand2 + board:
+        for card in knownCards:
             deck.remove(card)
         random.shuffle(deck)
 
@@ -77,8 +78,10 @@ def calcOdds(hand1: list, hand2: list, board: list, numSimulations: int = 2000) 
         while len(currentBoard) < 5:
             currentBoard.append(deck.pop())
 
-        score1 = handScore(hand1 + currentBoard)
-        score2 = handScore(hand2 + currentBoard)
+        # bestScore evaluates the best 5-card hand out of the 7 cards available
+        # (handScore is only for scoring a 2-card starting hand preflop, not a made hand)
+        score1 = bestScore(hand1 + currentBoard)
+        score2 = bestScore(hand2 + currentBoard)
 
         if score1 > score2:
             wins1 += 1
@@ -88,12 +91,12 @@ def calcOdds(hand1: list, hand2: list, board: list, numSimulations: int = 2000) 
             ties += 1
 
     return {
-        "Hand1 win %": round(100 * wins1 / numSimulations, 1),
-        "Hand2 win %": round(100 * wins2 / numSimulations, 1),
-        "Tie %": round(100 * ties / numSimulations, 1)
+        "hand1_win_pct": round(100 * wins1 / numSimulations, 1),
+        "hand2_win_pct": round(100 * wins2 / numSimulations, 1),
+        "tie_pct": round(100 * ties / numSimulations, 1),
     }
 
-def getHumanResponse(hero, board: list, toCall: int, pot: int, betAmount: int, isPreFlop: bool) -> str:
+def getHumanAction(hero, board: list, toCall: int, pot: int, betAmount: int, isPreFlop: bool) -> str:
 
     print(f"\n--- {hero.name} ({hero.position}) ---")
     print(positionTips[hero.position])

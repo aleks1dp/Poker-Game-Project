@@ -6,4 +6,4 @@ bigBlind = 10
 preflop = ["LJ", "HJ", "CO", "BTN", "SB", "BB"]
 postflop = ["SB", "BB", "LJ", "HJ", "CO", "BTN"]
 
-betSize = 0.5 
+betSize = 0.5
