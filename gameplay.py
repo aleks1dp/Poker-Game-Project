@@ -112,4 +112,31 @@ def bettingRound(self, positionOrder: list, isPreFlop: bool):
                 queue.extend(p for p in self.players if not p.folded and p != player)  # Re-add players to the queue to respond to the new raise
 
             queue = deque(p for p in queue if not p.folded and not p.allIn)  # Remove folded or all-in players from the queue
-            
+
+#Complete the hand and determine the winner(s)
+def resolveHand(self) -> dict:
+        pot = sum(p.totalCommitted for p in self.players)
+        livePlayers = [p for p in self.players if not p.folded]
+        
+        if len(livePlayers) == 1:
+            winner = livePlayers[0]
+            winner.stack += pot
+            return {"winner": winner.name, "hand": None, "pot": pot}
+
+        # Evaluate hands for all live players
+        playerScores = {p: bestScore(p.holeCards + self.board) for p in livePlayers}
+        bestScoreValue = max(playerScores.values())
+        winners = [p for p, score in playerScores.items() if score == bestScoreValue]
+
+        return {
+            "hand_number": self.hand_number,
+            "winners": [w.name for w in winners],
+            "pot": pot,
+            "showdown": True,
+            "winning_hand": handCategories[bestScoreValue[0]],
+            "board": [str(c) for c in self.board],
+        }
+
+def totalChipsInPot(self) -> int:
+        return sum(p.totalCommitted for p in self.players) 
+#Every chip that has been put into the pot by all players, including those who have folded
