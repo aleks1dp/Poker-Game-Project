@@ -1,3 +1,4 @@
+from itertools import combinations
 import random
 from evals import Rank, scoreFive
 
@@ -45,3 +46,57 @@ allScores = startingHandScores() #List of all possible starting hands and their 
 
 preFlopRaise = {"LJ": 0.17, "HJ": 0.22, "CO": 0.293, "BTN": 0.481, "SB": 0.472, "BB": 0.436} #Percentage of starting hands that should be raised from each position
 #https://blog.freebetrange.com/article/preflop-charts-open-raise-in-6-max-poker-cash-games
+
+def scoreCutoff(positions:str) -> float:
+    pct = preFlopRaise[positions]
+    index = max(0, min(len(allScores)-1, round(pct*len(allScores))-1)) #Ensures the index is within the bounds of the list
+    return allScores[index][3] #Returns the score of the hand at the cutoff index
+
+cutOff = {pos: scoreCutoff(pos) for pos in preFlopRaise} #Dictionary of the score cutoffs for each position 
+
+#Preflop decision making based on the hero's position, hole cards, and whether they are facing a bet
+def preFlopDecision(pos:str, holeCards: list, facingBet: bool) -> str:
+    rank1, rank2 = holeCards[0].rank.value, holeCards[1].rank.value
+    suited = holeCards[0].suit == holeCards[1].suit
+    score = handScore(rank1, rank2, suited)
+    makeABet = score >= cutOff[pos] #If the hand's score is above the cutoff for the position, raise
+    if not makeABet:
+        return "fold"
+    return "call" if facingBet else "raise" #If facing a bet, call, otherwise raise
+
+#Postflop decision making based on the hero's hole cards, community cards, and whether they are facing a bet
+def postFlopDecision(holeCards: list, communityCards: list, facingBet: bool) -> str:
+    allCards = holeCards + communityCards
+    bestHand = bestFiveCards(allCards) #Get the best 5 card hand from the hero's hole cards and the community cards
+    score = scoreFive(bestHand)[0] #Get the hand category score (0-8)
+
+    if facingBet:
+        if score >= 3: #Three of a kind or better
+            return "raise"
+        elif score == 2: #Two pair
+            return "call"
+        elif score == 1: #One pair
+            return "call"
+        else: #High card
+            return "fold"
+    else:
+        if score >= 3: #Three of a kind or better
+            return "raise"
+        elif score == 2: #Two pair
+            return "raise"
+        elif score == 1: #One pair
+            return "call"
+        else: #High card
+            return "check"
+
+#Finds the best 5 card hand from a list of cards and returns it
+def bestFiveCards(cards: list) -> list:
+    best = []
+    bestScoreValue = (0, [])
+    for combo in combinations(cards, 5):
+        score = scoreFive(list(combo))
+        if score > bestScoreValue:
+            bestScoreValue = score
+            best = list(combo)
+    return best
+        
