@@ -10,7 +10,7 @@ def handScore(rank1: int, rank2:int, suited: bool)-> float:
             10: 5, 9: 4.5, 8: 4, 7: 3.5,
             6: 3, 5: 2.5, 4: 2, 3: 1.5, 2:1}
     high, low = max(rank1, rank2), min(rank1, rank2)
-    score = values[high] #Base score is determined by the higher card in the hand
+    score = values.get(high, high/2) #Base score is determined by the higher card in the hand
     if high == low: #Pair
         score = max(score*2, 5) #Pairs are worth double their high card value, but at least 5
     else: #Non-pair hands
@@ -41,6 +41,22 @@ def startingHandScores()-> list:
                 score = handScore(rank1.value, rank2.value, True)
                 startingHands.append((rank1, rank2, True, score))
     return sorted(startingHands, key=lambda x: x[3], reverse=True)
+
+#Cheat sheet of all possible starting hands and their scores (descending order)
+def startingHadsLabeled()-> list:
+    from evals import rankChar
+    startingHands = []
+    for i in range(len(ranksAscending)):
+        for j in range(i, len(ranksAscending)):
+            rank1, rank2 = ranksAscending[i], ranksAscending[j]
+            score = handScore(rank1.value, rank2.value, False) #Default to offsuit
+            label = rankChar[rank1] + rankChar[rank2] + "o"
+            startingHands.append((label, score))
+            if rank1.value != rank2.value: #If the two cards are the same rank, they cannot be suited
+                score = handScore(rank1.value, rank2.value, True)
+                label = rankChar[rank1] + rankChar[rank2] + "s"
+                startingHands.append((label, score))
+    return sorted(startingHands, key=lambda x: x[1], reverse=True)
 
 allScores = startingHandScores() #List of all possible starting hands and their scores(descending order)
 

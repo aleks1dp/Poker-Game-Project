@@ -6,8 +6,9 @@ class Hero:
         self.position = None #Defines the position of the hero in the hand eg. SB
         self.isAllIn = False
         self.isFolded = False
-        self.Bet = 0 #Amount of chips the hero has put into the pot in the current hand
+        self.streetBet = 0 #Amount of chips the hero has put into the pot in the current hand (street)
         self.totalBet = 0 #Amount of chips the hero has put into the pot in the current hand and previous hands (whole hand)
+        self.isHuman = True #If True, the engine will ask a real person what to do instead of a bot
 
     #Resets the hero's state for a new hand
     def resetNewHand(self):
@@ -15,12 +16,12 @@ class Hero:
         self.position = None
         self.isAllIn = False
         self.isFolded = False
-        self.Bet = 0
+        self.streetBet = 0
         self.totalBet = 0
 
     #Resets the hero's state for a new round 
-    def resetNewRound(self):
-        self.Bet = 0
+    def resetNewStreet(self):
+        self.streetBet = 0
         self.isAllIn = False
         self.isFolded = False
 

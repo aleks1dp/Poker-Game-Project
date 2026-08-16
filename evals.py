@@ -36,10 +36,18 @@ class Card:
     def __str__(self):
         return f"{rankChar[self.rank]}{self.suit.value}"
 
-    def __repr__(self):
-        return self.__str__()
+charToRank = {v: k for k, v in rankChar.items()}
+charToSuit = {'h': Suit.HEARTS, 'd': Suit.DIAMONDS, 'c': Suit.CLUBS, 's': Suit.SPADES}
 
-handCategorys = {8: "Straight Flush", 7: "Four of a Kind", 6: "Full House", 5: "Flush",
+#Turns a string into Card object
+def parseCard(text: str) -> Card:
+    rankChar, suitChar = text[0].upper(), text[1].lower()
+    return Card(charToRank[rankChar], charToSuit[suitChar])
+
+def newDeck() -> list:
+    return [Card(rank, suit) for suit in Suit for rank in Rank]
+
+handCategories = {8: "Straight Flush", 7: "Four of a Kind", 6: "Full House", 5: "Flush",
                 4: "Straight", 3: "Three of a Kind", 2: "Two Pair", 1: "One Pair", 0: "High Card"}
 
 def scoreFive(cards: list) -> tuple:
