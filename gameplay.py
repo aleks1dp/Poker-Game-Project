@@ -3,7 +3,7 @@ from collections import deque
 from tableSetUp import smallBlind, bigBlind, preflop, postflop, betSize
 from evals import newDeck, bestScore, handCategories
 from hero import Hero
-from decisions import preflopAction, postflopAction
+from decisions import preflopDecision, postflopDecision
 from humanUI import getHumanAction
 
 
