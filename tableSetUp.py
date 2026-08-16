@@ -3,7 +3,7 @@ smallBlind = 5
 bigBlind = 10
 
 #Order of players in preflop and postflop
-preflop = ["UTG", "HG", "CO", "BTN", "SB", "BB"]
-postflop = ["SB", "BB", "UTG", "HG", "CO", "BTN"]
+preflop = ["LJ", "HJ", "CO", "BTN", "SB", "BB"]
+postflop = ["SB", "BB", "LJ", "HJ", "CO", "BTN"]
 
 betSize = 0.5 
